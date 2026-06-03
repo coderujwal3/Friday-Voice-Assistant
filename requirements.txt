@@ -1,9 +1,15 @@
 SpeechRecognition
-datetime
 pyttsx3
-sketchpy
+vosk
 wikipedia
 pyaudio
 pyautogui
 pyjokes
-AppOpener
+inputimeout
+insightface
+onnxruntime
+pywhatkit
+sketchpy --no-deps  # only if you want sketch drawings on Windows
+faster-whisper
+sounddevice
+spicy
