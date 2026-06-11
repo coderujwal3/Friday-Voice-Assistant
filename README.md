@@ -61,7 +61,7 @@ The repository requires a small `config.py` containing at least two string const
 ```python
 # config.py
 WAKE_WORD = "friday"
-SHUT_DOWN = "shutdown"
+SHUT_DOWN = "turn off assistant"
 ```
 
 Place `config.py` in the project root next to `main.py`.
