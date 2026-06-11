@@ -7,61 +7,90 @@ app = FaceAnalysis()
 app.prepare(ctx_id=0)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FACE_DB = os.path.join(BASE_DIR, "face_db")
 
-embedding_path = os.path.join(
-    BASE_DIR,
-    "face_db",
-    "ujwal.npy"
-)
+known_faces = {}
 
-known_embedding = np.load(embedding_path)
+for file in os.listdir(FACE_DB):
+    if file.endswith(".npy"):
+        name = os.path.splitext(file)[0]
 
-# known_embedding = np.load(
-#     "face_db/ujwal.npy"
-# )
+        embedding = np.load(
+            os.path.join(FACE_DB, file)
+        )
+
+        known_faces[name] = embedding
+
+print(f"Loaded {len(known_faces)} users.")
 
 
 def authenticate():
-    authenticated = False
-    count = 0  # number of frames used to verify user
+
+    THRESHOLD = 0.60
+
     cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
-        print("Camera could not be opened.")
-        cap.release()
-        return False
+        print("Failed to open camera.")
+        return False, None
+
+    authenticated = False
+    authenticated_user = None
 
     while True:
+
         ret, frame = cap.read()
-        if not ret or frame is None:
-            print("Failed to read frame from camera.")
-            count += 1
-            if count >= 4:
-                break
+
+        if not ret:
+            print("Failed to read frame.")
             continue
 
         faces = app.get(frame)
-        count += 1
 
         for face in faces:
+
             bbox = face.bbox.astype(int)
             current_embedding = face.embedding
-            similarity = np.dot(
-                known_embedding,
-                current_embedding
-            ) / (
-                np.linalg.norm(known_embedding)
-                * np.linalg.norm(current_embedding)
-            )
 
-            if similarity > 0.60:
-                color = (0, 255, 0)
-                text = f"Authenticated {similarity:.2f}"
+            best_match = None
+            best_similarity = -1
+
+            # Compare against all users
+            for name, stored_embedding in known_faces.items():
+
+                similarity = np.dot(
+                    stored_embedding,
+                    current_embedding
+                ) / (
+                    np.linalg.norm(stored_embedding)
+                    * np.linalg.norm(current_embedding)
+                )
+
+                if similarity > best_similarity:
+                    best_similarity = similarity
+                    best_match = name
+
+            # Authentication Decision
+            if best_similarity > THRESHOLD:
+
                 authenticated = True
-            else:
-                color = (0, 0, 255)
-                text = f"Unauthorized {similarity:.2f}"
+                authenticated_user = best_match
 
+                color = (0, 255, 0)
+                text = (
+                    f"{best_match} "
+                    f"({best_similarity:.2f})"
+                )
+
+            else:
+
+                color = (0, 0, 255)
+                text = (
+                    f"Unknown "
+                    f"({best_similarity:.2f})"
+                )
+
+            # Draw Bounding Box
             cv2.rectangle(
                 frame,
                 (bbox[0], bbox[1]),
@@ -69,27 +98,45 @@ def authenticate():
                 color,
                 2
             )
+
             cv2.putText(
                 frame,
                 text,
-                (bbox[0], bbox[1]-10),
+                (bbox[0], bbox[1] - 10),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
                 color,
                 2
             )
 
-        cv2.imshow("Authentication", frame)
+        cv2.imshow(
+            "Face Authentication",
+            frame
+        )
 
-        if cv2.waitKey(1) == 27:
+        key = cv2.waitKey(1)
+
+        # ESC key
+        if key == 27:
             break
 
-        if count >= 4:
+        # Stop after successful authentication
+        if authenticated:
+            print(
+                f"Authenticated: "
+                f"{authenticated_user}"
+            )
             break
 
     cap.release()
     cv2.destroyAllWindows()
-    return authenticated
+
+    return authenticated, authenticated_user
 
 if __name__ == "__main__":
-    authenticate()
+    status, user = authenticate()
+
+    if status:
+        print(f"Welcome {user}")
+    else:
+        print("Authentication Failed")

@@ -5,6 +5,7 @@ import pyttsx3
 import wikipedia
 import webbrowser
 import os
+import platform
 import turtle as t
 import pyautogui
 import pyjokes
@@ -12,6 +13,7 @@ import random
 import time
 import threading
 import sounddevice as sd
+import register_face as rf
 from getpass import getpass
 from urllib.parse import quote
 from inputimeout import inputimeout
@@ -158,15 +160,18 @@ def wakeup(greet: str):
     """
     speak(greet)
     while True:
-        query = take_command(timeout=3, phrase_time_limit=3, announce=False)
+        print("Listening...")
+        # query = take_command(timeout=3, phrase_time_limit=3, announce=False)
+        query = "friday"
         if not query:
             continue
         if SHUT_DOWN in query:
-            speak("Shutting down")
+            speak("Ok sir, No worry, assistant is closing")
             break
         if WAKE_WORD in query:
-            result = authenticate()
-            if result:
+            status, user = authenticate()
+            if user:
+                speak(f"Welcome {user}")
                 main_loop()
             else:
                 speak("Invalid User, try authentication again")
@@ -177,11 +182,11 @@ def wish_me():
     """
     hour = datetime.datetime.now().hour
     if 0 <= hour < 12:
-        speak("Good Morning Sir!")
+        speak("Good Morning")
     elif 12 <= hour < 16:
-        speak("Good Afternoon Sir!")
+        speak("Good Afternoon")
     else:
-        speak("Good Evening Sir!")
+        speak("Good Evening")
     speak("How can I help you?")
 
 
@@ -189,6 +194,10 @@ def wish_me():
 
 
 
+
+# register face for authentication
+def register_face_auth(name):
+    rf.register_face(name)
 
 
 # Create screenshots folder if not present
@@ -337,9 +346,9 @@ def virus_graphic():
 
 
 # prank function
-def prank_typewriter():
+def prank_typewriter(msg):
     speak("Initiating harmless prank: typewriter effect in console.")
-    message = "Are you online?"
+    message = msg
     for ch in message:
         print(ch, end="", flush=True)
         time.sleep(0.12)
@@ -413,6 +422,19 @@ def main_loop():
             break
 
         # Utilities
+        elif 'register face' in query:
+            speak("please name the user")
+            name = take_command()
+            if name or name != 'none':
+                register_face_auth(name)
+            else:
+                n = 1
+                register_face_auth(name=f"user{n}")
+                while os.path.exists(f"face_db/user{n}.npy"):
+                    n += 1
+                    register_face_auth(name=f"user{n}")
+            speak("Face registered successfully")
+
         elif 'screenshot' in query or 'screen shot' in query:
             take_screenshot()
 
@@ -426,7 +448,12 @@ def main_loop():
             hide_pass()
 
         elif 'prank' in query:
-            prank_typewriter()
+            speak("Which message would you like to do as a prank type writer")
+            msg = take_command()
+            if msg and msg != 'none':
+                prank_typewriter(msg)
+            else:
+                speak("No message provided. Try again with prank command")
 
         elif 'cool graphic' in query:
             cool_graphic()
@@ -452,6 +479,10 @@ def main_loop():
         elif 'youtube' in query and 'open' in query:
             speak("Opening YouTube.")
             webbrowser.open("https://www.youtube.com")
+
+        elif 'open chrome' in query:
+            speak("Opening Chrome.")
+            webbrowser.open("https://www.google.com")
 
         elif 'google search' in query or ('search' in query and 'google' in query):
             speak("Searching on Google.")
@@ -547,6 +578,30 @@ def main_loop():
                 sketch_from_image(path)
             else:
                 speak("No image path provided.")
+
+
+        # system commands
+        elif "shutdown pc" in query or 'shutdown my pc' in query or 'shutdown laptop' in query or 'shutdown my laptop' in query:
+            speak("Shutting down...")
+            current_os = platform.system()
+            if current_os == "Windows":
+                # /s = shutdown, /t 1 = 1 second delay
+                time.sleep(2)
+                os.system("shutdown /s /t 1")
+                break
+                
+            elif current_os == "Linux" or current_os == "Darwin": # Darwin is macOS
+                # Linux and macOS usually require administrative privileges (sudo)
+                time.sleep(2)
+                os.system("sudo shutdown -h now")
+                break
+                
+            else:
+                print("Operating system not supported.")
+
+        elif 'open current directory' in query:
+            speak("opening current directory in File explorer")
+            os.startfile(".")
 
         else:
             # If nothing matched, offer a fallback to search
