@@ -161,8 +161,7 @@ def wakeup(greet: str):
     speak(greet)
     while True:
         print("Listening...")
-        # query = take_command(timeout=3, phrase_time_limit=3, announce=False)
-        query = "friday"
+        query = take_command(timeout=3, phrase_time_limit=3, announce=False)
         if not query:
             continue
         if SHUT_DOWN in query:
